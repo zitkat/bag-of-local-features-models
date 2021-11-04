@@ -65,7 +65,8 @@ class Bottleneck(nn.Module):
 
 class BagNet(nn.Module):
 
-    def __init__(self, block, layers, stage, strides=[1, 2, 2, 2], kernel3=[0, 0, 0, 0], num_classes=1000, avg_pool=True):
+    def __init__(self, block, layers, stage="last",
+                 strides=[1, 2, 2, 2], kernel3=[0, 0, 0, 0], num_classes=1000, avg_pool=True):
         self.inplanes = 64
         super(BagNet, self).__init__()
         self.conv1 = nn.Conv2d(3, 64, kernel_size=1, stride=1, padding=0,
