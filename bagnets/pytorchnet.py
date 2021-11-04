@@ -4,6 +4,8 @@ import torch
 from collections import OrderedDict
 from torch.utils import model_zoo
 
+from dim_estimation.utils import Distribution
+
 import os 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
@@ -14,6 +16,7 @@ model_urls = {
             'bagnet17': 'https://bitbucket.org/wielandbrendel/bag-of-feature-pretrained-models/raw/249e8fa82c0913623a807d9d35eeab9da7dcc2a8/bagnet16-105524de.pth.tar',
             'bagnet33': 'https://bitbucket.org/wielandbrendel/bag-of-feature-pretrained-models/raw/249e8fa82c0913623a807d9d35eeab9da7dcc2a8/bagnet32-2ddd53ed.pth.tar',
                             }
+
 
 
 class Bottleneck(nn.Module):
@@ -62,7 +65,7 @@ class Bottleneck(nn.Module):
 
 class BagNet(nn.Module):
 
-    def __init__(self, block, layers, strides=[1, 2, 2, 2], kernel3=[0, 0, 0, 0], num_classes=1000, avg_pool=True):
+    def __init__(self, block, layers, stage, strides=[1, 2, 2, 2], kernel3=[0, 0, 0, 0], num_classes=1000, avg_pool=True):
         self.inplanes = 64
         super(BagNet, self).__init__()
         self.conv1 = nn.Conv2d(3, 64, kernel_size=1, stride=1, padding=0,
@@ -87,6 +90,8 @@ class BagNet(nn.Module):
             elif isinstance(m, nn.BatchNorm2d):
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()
+
+        self.stage = stage
 
     def _make_layer(self, block, planes, blocks, stride=1, kernel3=0, prefix=''):
         downsample = None
@@ -113,10 +118,34 @@ class BagNet(nn.Module):
         x = self.bn1(x)
         x = self.relu(x)
 
+        if self.stage == '1':
+            x = self.avgpool(x)  # REPLACE WITH DOWNSAMPLE TO 5x5
+            x = torch.flatten(x, 1)
+            return Distribution(x, deterministic=False)
+
         x = self.layer1(x)
+        if self.stage == '2':
+            x = self.avgpool(x)  # REPLACE WITH DOWNSAMPLE TO 5x5
+            x = torch.flatten(x, 1)
+            return Distribution(x, deterministic=False)
+
         x = self.layer2(x)
+        if self.stage == '3':
+            x = self.avgpool(x)  # REPLACE WITH DOWNSAMPLE TO 5x5
+            x = torch.flatten(x, 1)
+            return Distribution(x, deterministic=False)
+
         x = self.layer3(x)
+        if self.stage == '4':
+            x = self.avgpool(x)  # REPLACE WITH DOWNSAMPLE TO 5x5
+            x = torch.flatten(x, 1)
+            return Distribution(x, deterministic=False)
+
         x = self.layer4(x)
+        if self.stage == 'last':
+            x = self.avgpool(x)  # REPLACE WITH DOWNSAMPLE TO 5x5
+            x = torch.flatten(x, 1)
+            return Distribution(x, deterministic=False)
 
         if self.avg_pool:
             x = nn.AvgPool2d(x.size()[2], stride=1)(x)
